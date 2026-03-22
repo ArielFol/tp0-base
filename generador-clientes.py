@@ -16,7 +16,10 @@ def main():
                     "PYTHONUNBUFFERED=1",
                     "LOGGING_LEVEL=DEBUG"
                 ],
-                "networks": ["testing_net"]
+                "networks": ["testing_net"],
+                "volumes": [
+                    "./server/config.ini:/config.ini"
+                ]
             }
         },
         "networks": {
@@ -42,6 +45,9 @@ def main():
                 "CLI_LOG_LEVEL=DEBUG"
             ],
             "networks": ["testing_net"],
+            "volumes": [
+                    "./client/config.ini:/config.yaml"
+                ],
             "depends_on": ["server"]
         }
     with open(output_file, 'w') as f:
