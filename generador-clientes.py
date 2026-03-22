@@ -46,7 +46,7 @@ def main():
             ],
             "networks": ["testing_net"],
             "volumes": [
-                    "./client/config.ini:/config.yaml"
+                    "./client/config.yaml:/config.yaml"
                 ],
             "depends_on": ["server"]
         }
