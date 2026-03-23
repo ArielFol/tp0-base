@@ -63,7 +63,7 @@ class Server:
             client_sock.sendall(b"OK\n")
 
         except Exception as e:
-            logging.error("action: receive_message | result: fail | error: {e}")
+            logging.error(f"action: receive_message | result: fail | error: {e}")
         finally:
             client_sock.close()
 
