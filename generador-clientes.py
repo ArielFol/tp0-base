@@ -40,7 +40,12 @@ def main():
             "image": "client:latest",
             "entrypoint": "/client",
             "environment": [
-                f"CLI_ID={i}"
+                f"CLI_ID={i}",
+                f"NOMBRE=Nombre{i}",
+                f"APELLIDO=Apellido{i}",
+                f"DOCUMENTO={10000000 + i}",
+                f"NACIMIENTO=1990-01-0{i}",
+                f"NUMERO={7570 + i}"
             ],
             "networks": ["testing_net"],
             "volumes": [

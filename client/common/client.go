@@ -2,12 +2,12 @@ package common
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"time"
 	"os"
 	"os/signal"
 	"syscall"
+	"strconv"
 
 	"github.com/op/go-logging"
 )
@@ -53,6 +53,18 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
+func sendAll(conn net.Conn, data []byte) error {
+	totalSent := 0
+	for totalSent < len(data) {
+		n, err := conn.Write(data[totalSent:])
+		if err != nil {
+			return err
+		}
+		totalSent += n
+	}
+	return nil
+}
+
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
 
@@ -74,14 +86,31 @@ func (c *Client) StartClientLoop() {
 		
 		// Create the connection the server in every loop iteration. Send an
 		c.createClientSocket()
+		id, err := strconv.ParseUint(c.config.ID, 10, 32)
+		if err != nil {
+			log.Errorf("invalid client id: %v", err)
+			return
+		}
 
-		// TODO: Modify the send to avoid short-write
-		fmt.Fprintf(
-			c.conn,
-			"[CLIENT %v] Message N°%v\n",
-			c.config.ID,
-			msgID,
-		)
+		bet, err := NewBet(uint32(id))
+
+		if err != nil {
+			log.Errorf("action: create_bet | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			return
+		}
+
+		encodedBet, err := EncodeBet(bet)
+
+		if err != nil {
+			log.Errorf("action: encode_bet | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			return
+		}
+
+		if err := sendAll(c.conn, encodedBet); err != nil {
+			log.Errorf("action: send_message | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			return
+		}
+
 		msg, err := bufio.NewReader(c.conn).ReadString('\n')
 		c.conn.Close()
 
@@ -93,9 +122,17 @@ func (c *Client) StartClientLoop() {
 			return
 		}
 
-		log.Infof("action: receive_message | result: success | client_id: %v | msg: %v",
-			c.config.ID,
-			msg,
+		if msg != "OK\n" {
+			log.Errorf("action: receive_message | result: fail | client_id: %v | error: unexpected response '%v'",
+				c.config.ID,
+				msg,
+			)
+			return
+		}
+		
+		log.Infof("action: apuesta_enviada| result: success | dni: %v | numero: %v",
+			bet.DNI,
+			bet.Number,
 		)
 
 		// Wait a time between sending one message and the next one

@@ -3,6 +3,9 @@ import logging
 import signal
 import threading
 
+from .protocol import decode_bet
+from utils import store_bets
+
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -39,6 +42,7 @@ class Server:
         logging.info("action: close_socket | result: success")
         logging.info("action: shutdown_server | result: success")
 
+    
 
     def __handle_client_connection(self, client_sock):
         """
@@ -48,13 +52,14 @@ class Server:
         client socket will also be closed
         """
         try:
-            # TODO: Modify the receive to avoid short-reads
-            msg = client_sock.recv(1024).rstrip().decode('utf-8')
-            addr = client_sock.getpeername()
-            logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
-            # TODO: Modify the send to avoid short-writes
-            client_sock.send("{}\n".format(msg).encode('utf-8'))
-        except OSError as e:
+            bet = decode_bet(client_sock)
+            store_bets([bet])
+
+            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.dni} | numero: {bet.number}')
+
+            client_sock.sendall(b"OK\n")
+
+        except Exception as e:
             logging.error("action: receive_message | result: fail | error: {e}")
         finally:
             client_sock.close()
