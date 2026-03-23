@@ -50,6 +50,7 @@ def main():
             "networks": ["testing_net"],
             "volumes": [
                     "./client/config.yaml:/config.yaml"
+                    f"./data/agency-{i}.csv:/data/agency.csv"
                 ],
             "depends_on": ["server"]
         }
