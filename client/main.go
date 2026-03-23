@@ -108,6 +108,7 @@ func main() {
 		ID:            v.GetString("id"),
 		LoopAmount:    v.GetInt("loop.amount"),
 		LoopPeriod:    v.GetDuration("loop.period"),
+		BatchSize:    v.GetInt("batch.maxAmount"),
 	}
 
 	client := common.NewClient(clientConfig)

@@ -8,6 +8,8 @@ import (
 	"encoding/csv"
 )
 
+const MaxBatchBytes = 8 * 1024
+
 type Bet struct {
 	Agency 		uint32
 	Name  		string
@@ -54,7 +56,6 @@ func NewBet(agency uint32) (*Bet, error) {
 }
 
 func readNextBets(reader *csv.Reader, max int) ([]*Bet, error) {
-	var bets []Bet
 
 	for i := 0; i < max; i++ {
 		record, err := reader.Read()
@@ -90,7 +91,7 @@ func readNextBets(reader *csv.Reader, max int) ([]*Bet, error) {
             Birthdate: birthdate,
             Number:    uint32(number),
         }
-		
+
 		bets = append(bets, bet)
 	}
 

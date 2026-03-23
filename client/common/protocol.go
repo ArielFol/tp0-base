@@ -47,3 +47,24 @@ func EncodeBet(bet *Bet) ([]byte, error) {
 
 	return buffer.Bytes(), nil
 }
+
+func encodeBets(bets []*Bet) ([]byte, error) {
+	buffer := new(bytes.Buffer)
+
+	if err := binary.Write(buffer, binary.BigEndian, uint32(len(bets))); err != nil {
+		return nil, err
+	}
+	
+	for _, bet := range bets {
+		encodedBet, err := EncodeBet(bet)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := buffer.Write(encodedBet); err != nil {
+			return nil, err
+		}
+	}
+
+	return buffer.Bytes(), nil
+}
