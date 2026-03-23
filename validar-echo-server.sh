@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RED="testing_net"
+RED="tp0_testing_net"
 SERVER="server"
 PORT="12345"
 MENSAJE="prueba"
