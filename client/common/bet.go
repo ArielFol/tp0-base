@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"encoding/csv"
 )
 
 type Bet struct {
@@ -51,4 +52,51 @@ func NewBet(agency uint32) (*Bet, error) {
 		Number: uint32(number),
 	}, nil
 }
+
+func readNextBets(reader *csv.Reader, max int) ([]*Bet, error) {
+	var bets []Bet
+
+	for i := 0; i < max; i++ {
+		record, err := reader.Read()
+		if err != nil {
+			return nil, err
+		}
+
+		agency, err := strconv.ParseUint(record[0], 10, 32)
+        if err != nil {
+            return nil, err
+        }
+
+        dni, err := strconv.ParseUint(record[3], 10, 64)
+        if err != nil {
+            return nil, err
+        }
+
+        birthdate, err := strconv.ParseInt(record[4], 10, 64)
+        if err != nil {
+            return nil, err
+        }
+
+        number, err := strconv.ParseUint(record[5], 10, 32)
+        if err != nil {
+            return nil, err
+        }
+
+        bet := Bet{
+            Agency:    uint32(agency),
+            Name:      record[1],
+            Surname:   record[2],
+            DNI:       dni,
+            Birthdate: birthdate,
+            Number:    uint32(number),
+        }
+		
+		bets = append(bets, bet)
+	}
+
+	if len(bets) == 0 {
+		return nil, fmt.Errorf("no more bets to read")
+	}
+
+	return bets, nil
 
