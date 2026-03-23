@@ -34,7 +34,7 @@ class Server:
             except socket.timeout:
                 continue
         
-        logging.info("action: close_socket | result: in progress")
+        logging.info("action: close_socket | result: in_progress")
         self._server_socket.close()
         logging.info("action: close_socket | result: success")
         logging.info("action: shutdown_server | result: success")
