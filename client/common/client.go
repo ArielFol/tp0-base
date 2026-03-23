@@ -86,6 +86,13 @@ func (c *Client) StartClientLoop() {
 		
 		// Create the connection the server in every loop iteration. Send an
 		c.createClientSocket()
+
+		if c.conn == nil {
+			log.Errorf("action: connect | result: fail | client_id: %v", c.config.ID)
+			time.Sleep(c.config.LoopPeriod)
+			continue
+		}
+		
 		id, err := strconv.ParseUint(c.config.ID, 10, 32)
 		if err != nil {
 			log.Errorf("invalid client id: %v", err)
@@ -129,7 +136,7 @@ func (c *Client) StartClientLoop() {
 			)
 			return
 		}
-		
+
 		log.Infof("action: apuesta_enviada| result: success | dni: %v | numero: %v",
 			bet.DNI,
 			bet.Number,
