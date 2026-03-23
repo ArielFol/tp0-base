@@ -4,7 +4,7 @@ import signal
 import threading
 
 from .protocol import decode_bet
-from utils import store_bets
+from .utils import store_bets
 
 
 class Server:
@@ -52,10 +52,13 @@ class Server:
         client socket will also be closed
         """
         try:
+            logging.info(f'action: decodeando_mensaje | result: in_progress | ip: {client_sock.getpeername()[0]}')
             bet = decode_bet(client_sock)
+            logging.info(f'action: decodeando_mensaje | result: success | ip: {client_sock.getpeername()[0]} | dni: {bet.document} | numero: {bet.number}')
+            logging.info(f'action: apuesta_almacenada | result: in_progress | dni: {bet.document} | numero: {bet.number}')
             store_bets([bet])
 
-            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.dni} | numero: {bet.number}')
+            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
 
             client_sock.sendall(b"OK\n")
 
