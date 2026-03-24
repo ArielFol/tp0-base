@@ -59,11 +59,11 @@ class Server:
 
             if err is not None:
                 logging.info(f'action: apuesta_recibida | result: fail | cantidad: {len(bets) if bets is not None else 0}')
-                client_sock.sendall(b'300')
+                client_sock.sendall(b'400\n')
                 return
 
             logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets) if bets is not None else 0}')
-            client_sock.sendall(b'200')
+            client_sock.sendall(b'200\n')
 
         except Exception as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")

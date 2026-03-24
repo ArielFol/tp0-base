@@ -28,3 +28,15 @@ def decode_bet(sock) -> Bet:
     birthdate = datetime.date.fromtimestamp(birthdate_no_format).isoformat()
 
     return Bet(agency, name, last_name, str(dni), birthdate, number)
+
+def decode_bets_batch(sock) -> list[Bet]:
+    bets = []
+    bets_amount = struct.unpack('>I', recv_bytes(sock, 4))[0]
+    for _ in range(bets_amount):
+        bet = decode_bet(sock)
+        bets.append(bet)
+
+    if bets_amount != len(bets):
+        return bets, ValueError(f"Expected {bets_amount} bets but received {len(bets)}")
+        
+    return bets, None

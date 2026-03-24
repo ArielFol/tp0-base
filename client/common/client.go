@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 	"strconv"
+	"io"
+	"encoding/csv"
 
 	"github.com/op/go-logging"
 )
@@ -20,6 +22,7 @@ type ClientConfig struct {
 	ServerAddress string
 	LoopAmount    int
 	LoopPeriod    time.Duration
+	BatchMaxAmount int
 }
 
 // Client Entity that encapsulates how
@@ -112,39 +115,43 @@ func (c *Client) StartClientLoop() {
 			return
 		}
 
-		bets, err := readNextBets(betReader, c.config.BatchSize)
+		bets, err := readNextBets(betReader, c.config.BatchMaxAmount, uint32(id))
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			log.Errorf("action: read_bets | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			log.Errorf("action: read_bets | result: fail | client_id: %v | error: %v", id, err)
 			return
 		}
+		log.Infof("action: read_bets | result: success | client_id: %v | amount: %v", id, len(bets))
 
 		encodedBets, err := encodeBets(bets)
 		if err != nil {
-			log.Errorf("action: encode_bets | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			log.Errorf("action: encode_bets | result: fail | client_id: %v | error: %v", id, err)
 			return
 		}
+		log.Infof("action: encode_bets | result: success | client_id: %v | amount: %v", id, len(bets))
+
 
 		if err := sendAll(c.conn, encodedBets); err != nil {
-			log.Errorf("action: send_message | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			log.Errorf("action: send_message | result: fail | client_id: %v | error: %v", id, err)
 			return
 		}
+		log.Infof("action: send_message | result: success | client_id: %v | amount: %v", id, len(bets))
 
 		msg, err := bufio.NewReader(c.conn).ReadString('\n')
 		c.conn.Close()
 		if err != nil {
 			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
-				c.config.ID,
+				id,
 				err,
 			)
 			return
 		}
 		
-		if msg != "OK\n" {
+		if msg != "200\n" {
 			log.Errorf("action: receive_message | result: fail | client_id: %v | error: unexpected response '%v'",
-				c.config.ID,
+				id,
 				msg,
 			)
 			return
