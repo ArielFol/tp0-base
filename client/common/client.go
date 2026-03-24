@@ -287,7 +287,7 @@ func (c *Client) GetResults() {
 		}
 
 		if status_code[0] == ResponseError {
-			log.Errorf("action: received_message | result: fail | client_id: %v | response: %v", c.config.ID, status_code[0])
+			//log.Errorf("action: received_message | result: fail | client_id: %v | response: %v", c.config.ID, status_code[0])
 			c.conn.Close()
 			time.Sleep(c.config.RetriesDelay)
 			continue
@@ -296,7 +296,7 @@ func (c *Client) GetResults() {
 		winners, err := decodeResultsResponse(c.conn)
 		c.conn.Close()
 		if err != nil {
-			log.Errorf("action: received_message 2 | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			log.Errorf("action: received_message | result: fail | client_id: %v | error: %v", c.config.ID, err)
 			time.Sleep(c.config.RetriesDelay)
 			continue
 		}
