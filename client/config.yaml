@@ -4,9 +4,9 @@ loop:
   amount: 500
   period: "150ms"
 log:
-  level: "INFO"
+  level: "ERROR"
 batch:
-  maxAmount: 10
+  maxAmount: 150
 retries:
   maxAmount: 100
   retryDelay: "500ms"

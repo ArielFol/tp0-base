@@ -64,7 +64,7 @@ def encode_results_message(winners: list[Bet]) -> bytes:
         buffer += struct.pack('>Q', int(winner.document))
     return buffer
 
-def encode_no_results_message(error_msg: str) -> bytes:
+def encode_no_results_message() -> bytes:
     buffer = bytearray()
     buffer += struct.pack('>B', StatusCode.ERROR.value)
     return buffer
