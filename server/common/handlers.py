@@ -1,4 +1,5 @@
 import logging
+import os
 
 
 from .protocol import decode_bets_batch, decode_agency_id, encode_no_results_message, encode_results_message
