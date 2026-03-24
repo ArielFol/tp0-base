@@ -276,7 +276,7 @@ func (c *Client) GetResults() {
 			time.Sleep(c.config.RetriesDelay)
 			continue
 		}
-		log.Infof("action: send_message | result: success | client_id: %v", c.config.ID)
+		log.Infof("action: send_message_results | result: success | client_id: %v", c.config.ID)
 
 		status_code := make([]byte, 1)
 		if _, err := io.ReadFull(c.conn, status_code); err != nil {
