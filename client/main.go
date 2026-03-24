@@ -39,9 +39,9 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("log", "level")
 	v.BindEnv("batch.maxAmount")
 	v.BindEnv("retries.maxAmount")
-	v.setDefault("retries.maxAmount", 100)
+	v.SetDefault("retries.maxAmount", 100)
 	v.BindEnv("retries.retryDelay")
-	v.setDefault("retries.retryDelay", "500ms")
+	v.SetDefault("retries.retryDelay", "500ms")
 
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration

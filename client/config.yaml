@@ -8,5 +8,5 @@ log:
 batch:
   maxAmount: 10
 retries:
-  maxAmount: 10
+  maxAmount: 100
   retryDelay: "500ms"
