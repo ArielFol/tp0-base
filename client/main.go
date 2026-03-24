@@ -39,7 +39,7 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("log", "level")
 	v.BindEnv("batch.maxAmount")
 	v.BindEnv("retries.maxAmount")
-	v.setDefault("retries.maxAmount", "100")
+	v.setDefault("retries.maxAmount", 100)
 	v.BindEnv("retries.retryDelay")
 	v.setDefault("retries.retryDelay", "500ms")
 
