@@ -70,9 +70,23 @@ func (c *Client) StartClientLoop() {
 
 	sigChannel := make(chan os.Signal, 1)
 	signal.Notify(sigChannel, syscall.SIGTERM)
+
+	file, err := os.Open("/data/agency.csv")
+	if err != nil {
+		log.Errorf("action: open_file | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(bufio.NewReader(file))
+	betReader := &BetReader{
+		reader: reader,
+	}
+	
+
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
-	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
+	for msgID := 1; msgID <= c.config.LoopAmount; msgID++{
 		select {
 		case <-sigChannel:
 			log.Infof("action: shutdown | result: in_progress | client_id: %v", c.config.ID)
@@ -83,10 +97,9 @@ func (c *Client) StartClientLoop() {
 			return
 		default:
 		}
-		
+
 		// Create the connection the server in every loop iteration. Send an
 		c.createClientSocket()
-
 		if c.conn == nil {
 			log.Errorf("action: connect | result: fail | client_id: %v", c.config.ID)
 			time.Sleep(c.config.LoopPeriod)
@@ -99,28 +112,28 @@ func (c *Client) StartClientLoop() {
 			return
 		}
 
-		bet, err := NewBet(uint32(id))
-
+		bets, err := readNextBets(betReader, c.config.BatchSize)
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			log.Errorf("action: create_bet | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			log.Errorf("action: read_bets | result: fail | client_id: %v | error: %v", c.config.ID, err)
 			return
 		}
 
-		encodedBet, err := EncodeBet(bet)
-
+		encodedBets, err := encodeBets(bets)
 		if err != nil {
-			log.Errorf("action: encode_bet | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			log.Errorf("action: encode_bets | result: fail | client_id: %v | error: %v", c.config.ID, err)
 			return
 		}
 
-		if err := sendAll(c.conn, encodedBet); err != nil {
+		if err := sendAll(c.conn, encodedBets); err != nil {
 			log.Errorf("action: send_message | result: fail | client_id: %v | error: %v", c.config.ID, err)
 			return
 		}
 
 		msg, err := bufio.NewReader(c.conn).ReadString('\n')
 		c.conn.Close()
-
 		if err != nil {
 			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
 				c.config.ID,
@@ -128,7 +141,7 @@ func (c *Client) StartClientLoop() {
 			)
 			return
 		}
-
+		
 		if msg != "OK\n" {
 			log.Errorf("action: receive_message | result: fail | client_id: %v | error: unexpected response '%v'",
 				c.config.ID,
@@ -137,14 +150,13 @@ func (c *Client) StartClientLoop() {
 			return
 		}
 
-		log.Infof("action: apuesta_enviada| result: success | dni: %v | numero: %v",
-			bet.DNI,
-			bet.Number,
+		log.Infof("action: apuesta_enviada| result: success | cantidad: %v",
+			len(bets),
 		)
 
 		// Wait a time between sending one message and the next one
 		time.Sleep(c.config.LoopPeriod)
-
 	}
+	
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }

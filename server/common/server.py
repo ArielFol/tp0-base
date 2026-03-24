@@ -3,7 +3,7 @@ import logging
 import signal
 import threading
 
-from .protocol import decode_bet
+from .protocol import decode_bet, decode_bets_batch
 from .utils import store_bets
 
 
@@ -52,15 +52,18 @@ class Server:
         client socket will also be closed
         """
         try:
-            logging.info(f'action: decodeando_mensaje | result: in_progress | ip: {client_sock.getpeername()[0]}')
-            bet = decode_bet(client_sock)
-            logging.info(f'action: decodeando_mensaje | result: success | ip: {client_sock.getpeername()[0]} | dni: {bet.document} | numero: {bet.number}')
-            logging.info(f'action: apuesta_almacenada | result: in_progress | dni: {bet.document} | numero: {bet.number}')
-            store_bets([bet])
+            logging.info(f'action: decoding_message | result: in_progress')
+            bets, err = decode_bets_batch(client_sock)
+            for bet in bets:
+                store_bets([bet])
 
-            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+            if err is not None:
+                logging.info(f'action: apuesta_recibida | result: fail | cantidad: {len(bets) if bets is not None else 0}')
+                client_sock.sendall(b'300')
+                return
 
-            client_sock.sendall(b"OK\n")
+            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets) if bets is not None else 0}')
+            client_sock.sendall(b'200')
 
         except Exception as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
@@ -78,5 +81,5 @@ class Server:
         # Connection arrived
         logging.info('action: accept_connections | result: in_progress')
         c, addr = self._server_socket.accept()
-        logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
+        logging.info(f'action: accept_connections | result: success')
         return c

@@ -19,6 +19,11 @@ type Bet struct {
 	Number 		uint32
 }
 
+type BetReader struct {
+	reader *csv.Reader
+	pending *Bet
+}
+
 func NewBet(agency uint32) (*Bet, error) {
 	name := os.Getenv("NOMBRE")
 	surname := os.Getenv("APELLIDO")
@@ -55,49 +60,73 @@ func NewBet(agency uint32) (*Bet, error) {
 	}, nil
 }
 
-func readNextBets(reader *csv.Reader, max int) ([]*Bet, error) {
+func readNextBets(betReader *BetReader, max int) ([]*Bet, error) {
+	var bets []*Bet
+	currentSize := 0
 
 	for i := 0; i < max; i++ {
-		record, err := reader.Read()
+		if betReader.pending != nil {
+			bet = betReader.pending
+			betReader.pending = nil
+		} else {
+			
+
+			record, err := betReader.reader.Read()
+			if err != nil {
+				return nil, err
+			}
+
+			agency, err := strconv.ParseUint(record[0], 10, 32)
+			if err != nil {
+				return nil, err
+			}
+
+			dni, err := strconv.ParseUint(record[3], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+
+			birthdate, err := strconv.ParseInt(record[4], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+
+			number, err := strconv.ParseUint(record[5], 10, 32)
+			if err != nil {
+				return nil, err
+			}
+
+			bet := Bet{
+				Agency:    uint32(agency),
+				Name:      record[1],
+				Surname:   record[2],
+				DNI:       dni,
+				Birthdate: birthdate,
+				Number:    uint32(number),
+			}
+		}
+
+		encodedBet, err := EncodeBet(&bet)
 		if err != nil {
 			return nil, err
 		}
 
-		agency, err := strconv.ParseUint(record[0], 10, 32)
-        if err != nil {
-            return nil, err
-        }
-
-        dni, err := strconv.ParseUint(record[3], 10, 64)
-        if err != nil {
-            return nil, err
-        }
-
-        birthdate, err := strconv.ParseInt(record[4], 10, 64)
-        if err != nil {
-            return nil, err
-        }
-
-        number, err := strconv.ParseUint(record[5], 10, 32)
-        if err != nil {
-            return nil, err
-        }
-
-        bet := Bet{
-            Agency:    uint32(agency),
-            Name:      record[1],
-            Surname:   record[2],
-            DNI:       dni,
-            Birthdate: birthdate,
-            Number:    uint32(number),
-        }
+		if len(bets) == 0 {
+			currentSize += 4
+		}
+		
+		if currentSize + len(encodedBet) > MaxBatchBytes {
+			betReader.pending = &bet
+			break
+		}
 
 		bets = append(bets, bet)
 	}
 
 	if len(bets) == 0 {
-		return nil, fmt.Errorf("no more bets to read")
+		return nil, io.EOF
 	}
 
 	return bets, nil
+}
 
