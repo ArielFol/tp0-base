@@ -33,6 +33,9 @@ def handle_finish_message(client_sock, finished_agencies):
     logging.info(f'action: mensaje_recibido | result: success | tipo: mensaje de finalizacion')
     client_sock.sendall(b'200\n')
 
+    if len(finished_agencies) == int(os.getenv("AGENCIES_AMOUNT", 0)):
+        logging.info(f'action: sorteo | result: success')
+
 def handle_results_message(client_sock, finished_agencies, total_agencies):
     if len(finished_agencies) == total_agencies:
         logging.info(f'action: mensaje_recibido | result: success | tipo: mensaje de resultados')
