@@ -101,7 +101,13 @@ func (c *Client) StartClientLoop() {
 		default:
 		}
 
-				bets, err := readNextBets(betReader, c.config.BatchMaxAmount, uint32(id))
+		id, err := strconv.ParseUint(c.config.ID, 10, 32)
+		if err != nil {
+			log.Errorf("invalid client id: %v", err)
+			return
+		}
+
+		bets, err := readNextBets(betReader, c.config.BatchMaxAmount, uint32(id))
 		if err == io.EOF {
 			break
 		}
@@ -114,17 +120,12 @@ func (c *Client) StartClientLoop() {
 		// Create the connection the server in every loop iteration. Send an
 		c.createClientSocket()
 		if c.conn == nil {
-			log.Errorf("action: connect | result: fail | client_id: %v", c.config.ID)
+			log.Errorf("action: connect | result: fail | client_id: %v", id)
 			time.Sleep(c.config.LoopPeriod)
 			continue
 		}
-		log.Infof("action: connect | result: success | client_id: %v", c.config.ID)
-		
-		id, err := strconv.ParseUint(c.config.ID, 10, 32)
-		if err != nil {
-			log.Errorf("invalid client id: %v", err)
-			return
-		}
+		log.Infof("action: connect | result: success | client_id: %v", id)
+
 
 		encodedBets, err := encodeBets(bets)
 		if err != nil {
