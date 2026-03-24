@@ -52,7 +52,6 @@ def load_bets() -> list[Bet]:
 
 def get_winners() -> list[Bet]:
     winners = [bet for bet in load_bets() if has_won(bet)]
-    logging.info(f'action: consulta_ganadores | result: success | cant_ganadores: {len(winners)}')
     return winners
 
 def get_winners_for_agency(agency_id: int) -> list[Bet]:
