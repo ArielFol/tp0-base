@@ -67,15 +67,12 @@ func readNextBets(betReader *BetReader, max int, agency uint32) ([]Bet, error) {
 	currentSize := 0
 
 	for i := 0; i < max; i++ {
-		log.Infof("reading bet %v for agency %v", i+1, agency)
-
 		var bet Bet
 
 		if betReader.hasPending {
 			bet = betReader.pending
 			betReader.hasPending = false
 		} else {
-			log.Infof("there is no pending bet for agency %v, reading from file", agency)
 			record, err := betReader.reader.Read()
 			if err != nil {
 				if err == io.EOF {
