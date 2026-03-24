@@ -116,8 +116,8 @@ func readNextBets(betReader *BetReader, max int, agency uint32) ([]Bet, error) {
 			}
 
 			if len(bets) == 0 {
-				// header
-				currentSize += 4
+				// header + message type
+				currentSize += 4 + 1
 			}
 			
 			if currentSize + len(encodedBet) > MaxBatchBytes {

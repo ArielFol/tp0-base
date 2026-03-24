@@ -1,11 +1,18 @@
+import os
 import socket
 import logging
 import signal
 import threading
 
-from .protocol import decode_bet, decode_bets_batch
+from .protocol import decode_message_type
 from .utils import store_bets
+from .handlers import handle_bets_message, handle_finish_message, handle_results_message
+from enum import IntEnum
 
+class MessageType(IntEnum):
+    BETS = 1
+    FIN = 2
+    RESULTS = 3
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -15,6 +22,7 @@ class Server:
         self._server_socket.listen(listen_backlog)
         self._server_socket.settimeout(1)
         self._shutdown_event = threading.Event()
+        self._finished_agencies = set()
 
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
@@ -53,17 +61,18 @@ class Server:
         """
         try:
             logging.info(f'action: decoding_message | result: in_progress')
-            bets, err = decode_bets_batch(client_sock)
-            for bet in bets:
-                store_bets([bet])
+            message_type = decode_message_type(client_sock)
+            
+            if message_type == MessageType.BETS:
+                handle_bets_message(client_sock)
 
-            if err is not None:
-                logging.info(f'action: apuesta_recibida | result: fail | cantidad: {len(bets) if bets is not None else 0}')
-                client_sock.sendall(b'400\n')
-                return
+            elif message_type == MessageType.FIN:
+                handle_finish_message(client_sock, self._finished_agencies)
 
-            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets) if bets is not None else 0}')
-            client_sock.sendall(b'200\n')
+            elif message_type == MessageType.RESULTS:
+                #read environment variable to know how many agencies to expect
+                total_agencies = int(os.getenv("AGENCIES_AMOUNT", 0))
+                handle_results_message(client_sock, self._finished_agencies, total_agencies)
 
         except Exception as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")

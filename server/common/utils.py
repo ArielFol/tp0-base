@@ -1,5 +1,6 @@
 import csv
 import datetime
+import logging
 import time
 
 
@@ -49,3 +50,10 @@ def load_bets() -> list[Bet]:
         for row in reader:
             yield Bet(row[0], row[1], row[2], row[3], row[4], row[5])
 
+def get_winners() -> list[Bet]:
+    winners = [bet for bet in load_bets() if has_won(bet)]
+    logging.info(f'action: consulta_ganadores | result: success | cant_ganadores: {len(winners)}')
+    return winners
+
+def get_winners_for_agency(agency_id: int) -> list[Bet]:
+    return [bet for bet in get_winners() if bet.agency == agency_id]

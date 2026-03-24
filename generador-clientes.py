@@ -13,7 +13,8 @@ def main():
                 "image": "server:latest",
                 "entrypoint": "python3 /main.py",
                 "environment": [
-                    "PYTHONUNBUFFERED=1"
+                    "PYTHONUNBUFFERED=1",
+                    f"AGENCIES_AMOUNT={num_clients}"
                 ],
                 "networks": ["testing_net"],
                 "volumes": [

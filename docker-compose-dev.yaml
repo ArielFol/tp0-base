@@ -6,6 +6,7 @@ services:
     entrypoint: python3 /main.py
     environment:
     - PYTHONUNBUFFERED=1
+    - AGENCIES_AMOUNT=2
     networks:
     - testing_net
     volumes:
@@ -26,6 +27,24 @@ services:
     volumes:
     - ./client/config.yaml:/config.yaml
     - ./.data/agency-1.csv:/data/agency.csv
+    depends_on:
+    - server
+  client2:
+    container_name: client2
+    image: client:latest
+    entrypoint: /client
+    environment:
+    - CLI_ID=2
+    - NOMBRE=Nombre2
+    - APELLIDO=Apellido2
+    - DOCUMENTO=10000002
+    - NACIMIENTO=1990-01-02
+    - NUMERO=7572
+    networks:
+    - testing_net
+    volumes:
+    - ./client/config.yaml:/config.yaml
+    - ./.data/agency-2.csv:/data/agency.csv
     depends_on:
     - server
 networks:

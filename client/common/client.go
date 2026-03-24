@@ -23,6 +23,8 @@ type ClientConfig struct {
 	LoopAmount    int
 	LoopPeriod    time.Duration
 	BatchMaxAmount int
+	RetriesMaxAmount int
+	RetriesDelay     time.Duration
 }
 
 // Client Entity that encapsulates how
@@ -169,3 +171,145 @@ func (c *Client) StartClientLoop() {
 	
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
+
+func (c *Client) NotifyFinish() {
+	sigChannel := make(chan os.Signal, 1)
+	signal.Notify(sigChannel, syscall.SIGTERM)
+
+	select {
+		case <-sigChannel:
+			log.Infof("action: shutdown | result: in_progress | client_id: %v", c.config.ID)
+			if c.conn != nil {
+				c.conn.Close()
+				log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
+			}
+			return
+		default:
+	}
+
+	c.createClientSocket()
+	if c.conn == nil {
+		log.Errorf("action: connect | result: fail | client_id: %v", c.config.ID)
+		return
+	}
+	log.Infof("action: connect | result: success | client_id: %v", c.config.ID)
+
+	id, err := strconv.ParseUint(c.config.ID, 10, 32)
+	if err != nil {
+		log.Errorf("invalid client id: %v", err)
+		return
+	}
+
+	encodedMsg, err := encodeFinishMessage(uint32(id))
+	if err != nil {
+		log.Errorf("action: encode_message | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return
+	}
+
+	if err := sendAll(c.conn, encodedMsg); err != nil {
+		log.Errorf("action: send_message | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return
+	}
+	log.Infof("action: send_message | result: success | client_id: %v", c.config.ID)
+
+	msg, err := bufio.NewReader(c.conn).ReadString('\n')
+	c.conn.Close()
+	if err != nil {
+		log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
+			id,
+			err,
+		)
+		return
+	}
+		
+	if msg != "200\n" {
+		log.Errorf("action: receive_message | result: fail | client_id: %v | error: unexpected response '%v'",
+			id,
+			msg,
+		)
+		return
+	}
+
+	log.Infof("action: finalizacion enviada| result: success")
+}
+
+func (c *Client) GetResults() {
+	sigChannel := make(chan os.Signal, 1)
+	signal.Notify(sigChannel, syscall.SIGTERM)
+
+	for attempts := 0; attempts < c.config.RetriesMaxAmount; attempts++ {
+		select {
+			case <-sigChannel:
+				log.Infof("action: shutdown | result: in_progress | client_id: %v", c.config.ID)
+				if c.conn != nil {
+					c.conn.Close()
+				log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
+				}
+				return
+			default:
+		}
+
+		id, err := strconv.ParseUint(c.config.ID, 10, 32)
+		if err != nil {
+			log.Errorf("invalid client id: %v", err)
+			time.Sleep(c.config.RetriesDelay)
+			continue
+		}
+
+		c.createClientSocket()
+		if c.conn == nil {
+			log.Errorf("action: connect | result: fail | client_id: %v", c.config.ID)
+			time.Sleep(c.config.RetriesDelay)
+			continue
+		}
+		log.Infof("action: connect | result: success | client_id: %v", c.config.ID)
+
+		encodedMsg, err := encodeResultsMessage(uint32(id))
+		if err != nil {
+			log.Errorf("action: encode_message | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			continue
+		}
+
+		if err := sendAll(c.conn, encodedMsg); err != nil {
+			log.Errorf("action: send_message | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			c.conn.Close()
+			time.Sleep(c.config.RetriesDelay)
+			continue
+		}
+		log.Infof("action: send_message | result: success | client_id: %v", c.config.ID)
+
+		status_code := make([]byte, 1)
+		if _, err := io.ReadFull(c.conn, status_code); err != nil {
+			log.Errorf("action: receive_message | result: fail | error: %v", err)
+			c.conn.Close()
+			time.Sleep(c.config.RetriesDelay)
+			continue
+		}
+
+		if status_code[0] == ResponseError {
+			log.Errorf("action: received_message | result: fail | client_id: %v | response: %v", c.config.ID, status_code[0])
+			c.conn.Close()
+			time.Sleep(c.config.RetriesDelay)
+			continue
+		}
+
+		winners, err := decodeResultsResponse(c.conn)
+		c.conn.Close()
+		if err != nil {
+			log.Errorf("action: received_message 2 | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			time.Sleep(c.config.RetriesDelay)
+			continue
+		}
+
+		for _, w := range winners {
+			log.Infof("action: ganador | result: success | client_id: %v | ganador_dni: %v", id, w)
+		}
+
+		log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v",
+			len(winners),
+		)
+		return
+	}
+}
+
+

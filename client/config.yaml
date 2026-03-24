@@ -7,3 +7,6 @@ log:
   level: "INFO"
 batch:
   maxAmount: 10
+retries:
+  maxAmount: 10
+  retryDelay: "500ms"

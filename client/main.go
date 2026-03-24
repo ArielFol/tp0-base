@@ -38,6 +38,8 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("loop", "amount")
 	v.BindEnv("log", "level")
 	v.BindEnv("batch.maxAmount")
+	v.BindEnv("retries.maxAmount")
+	v.BindEnv("retries.retryDelay")
 
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration
@@ -89,6 +91,8 @@ func PrintConfig(v *viper.Viper) {
 		v.GetDuration("loop.period"),
 		v.GetString("log.level"),
 		v.GetInt("batch.maxAmount"),
+		v.GetInt("retries.maxAmount"),
+		v.GetDuration("retries.retryDelay"),
 	)
 }
 
@@ -111,8 +115,12 @@ func main() {
 		LoopAmount:    v.GetInt("loop.amount"),
 		LoopPeriod:    v.GetDuration("loop.period"),
 		BatchMaxAmount: v.GetInt("batch.maxAmount"),
+		RetriesMaxAmount: v.GetInt("retries.maxAmount"),
+		RetriesDelay: v.GetDuration("retries.retryDelay"),
 	}
 
 	client := common.NewClient(clientConfig)
 	client.StartClientLoop()
+	client.NotifyFinish()
+	client.GetResults()
 }

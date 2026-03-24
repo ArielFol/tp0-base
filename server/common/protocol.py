@@ -2,6 +2,12 @@ import struct
 
 from .utils import Bet
 import datetime
+from enum import IntEnum
+
+
+class StatusCode(IntEnum):
+    OK = 1
+    ERROR = 2
 
 def recv_bytes(sock, n):
     data = b''
@@ -40,3 +46,25 @@ def decode_bets_batch(sock) -> list[Bet]:
         return bets, ValueError(f"Expected {bets_amount} bets but received {len(bets)}")
         
     return bets, None
+
+def decode_message_type(sock) -> int:
+    return struct.unpack('>B', recv_bytes(sock, 1))[0]
+
+def decode_agency_id(sock) -> int:
+    return struct.unpack('>I', recv_bytes(sock, 4))[0], None
+
+def encode_results_message(winners: list[Bet]) -> bytes:
+    buffer = bytearray()
+    
+    #Status code 
+    buffer += struct.pack('>B', StatusCode.OK.value)
+
+    buffer += struct.pack('>I', len(winners))
+    for winner in winners:
+        buffer += struct.pack('>Q', int(winner.document))
+    return buffer
+
+def encode_no_results_message(error_msg: str) -> bytes:
+    buffer = bytearray()
+    buffer += struct.pack('>B', StatusCode.ERROR.value)
+    return buffer
