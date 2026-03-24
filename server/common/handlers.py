@@ -50,6 +50,5 @@ def handle_results_message(client_sock, finished_agencies, total_agencies):
         client_sock.sendall(encoded_message)
         logging.info(f'action: mensaje_enviado | result: success | tipo: mensaje de resultados | cantidad_ganadores: {len(winners)}')
     else:
-        logging.info(f'action: mensaje_recibido | result: fail | error: no se han finalizado todas las agencias')
         encoded_message = encode_no_results_message()
         client_sock.sendall(encoded_message)

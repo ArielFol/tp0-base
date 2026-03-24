@@ -287,7 +287,6 @@ func (c *Client) GetResults() {
 		}
 
 		if status_code[0] == ResponseError {
-			//log.Errorf("action: received_message | result: fail | client_id: %v | response: %v", c.config.ID, status_code[0])
 			c.conn.Close()
 			time.Sleep(c.config.RetriesDelay)
 			continue
