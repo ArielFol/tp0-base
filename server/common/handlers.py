@@ -43,14 +43,14 @@ def handle_finish_message(client_sock, finished_agencies, finished_lock, sorteo_
 
 
 def handle_results_message(client_sock, sorteo_event, bets_lock):
-    logging.info(f'action: mensaje_recibido | result: success | tipo: mensaje de resultados')
-
     agency_id, err = decode_agency_id(client_sock)
     if err is not None:
         logging.info(f'action: mensaje_recibido | result: fail | error: no se pudo decodificar el id de agencia')
         encoded_message = encode_no_results_message()
         client_sock.sendall(encoded_message)
         return
+    
+    logging.info(f'action: mensaje_recibido | result: success | tipo: mensaje de resultados')
     
     if not sorteo_event.is_set():
         encoded_message = encode_no_results_message()
