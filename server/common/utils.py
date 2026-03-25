@@ -54,5 +54,7 @@ def get_winners() -> list[Bet]:
     winners = [bet for bet in load_bets() if has_won(bet)]
     return winners
 
-def get_winners_for_agency(agency_id: int) -> list[Bet]:
-    return [bet for bet in get_winners() if bet.agency == agency_id]
+def get_winners_for_agency(agency_id: int, bets_lock) -> list[Bet]:
+    with bets_lock:
+        bets = list(get_winners())
+    return [bet for bet in bets if bet.agency == agency_id]

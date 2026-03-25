@@ -23,6 +23,10 @@ class Server:
         self._server_socket.settimeout(1)
         self._shutdown_event = threading.Event()
         self._finished_agencies = set()
+        self._bets_lock = threading.Lock()
+        self._finished_lock = threading.Lock()
+        self._sorteo_event = threading.Event()
+
 
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
@@ -38,16 +42,26 @@ class Server:
         communication with a client. After client with communucation
         finishes, servers starts to accept new connections again
         """
+        threads = []
+
         while not self._shutdown_event.is_set():
             try:
                 client_sock = self.__accept_new_connection()
-                self.__handle_client_connection(client_sock)
+                client_thread = threading.Thread(target=self.__handle_client_connection, args=(client_sock,))
+                client_thread.start()
+                threads.append(client_thread)
             except socket.timeout:
                 continue
-        
+
+        logging.info("action: joining_threads | result: in_progress")
+        for thread in threads:
+            thread.join()
+        logging.info("action: joining_threads | result: success")
+
         logging.info("action: close_socket | result: in_progress")
         self._server_socket.close()
         logging.info("action: close_socket | result: success")
+
         logging.info("action: shutdown_server | result: success")
 
     
@@ -64,15 +78,13 @@ class Server:
             message_type = decode_message_type(client_sock)
             
             if message_type == MessageType.BETS:
-                handle_bets_message(client_sock)
+                handle_bets_message(client_sock, self._bets_lock)
 
             elif message_type == MessageType.FIN:
-                handle_finish_message(client_sock, self._finished_agencies)
+                handle_finish_message(client_sock, self._finished_agencies, self._finished_lock, self._sorteo_event)
 
             elif message_type == MessageType.RESULTS:
-                #read environment variable to know how many agencies to expect
-                total_agencies = int(os.getenv("AGENCIES_AMOUNT", 0))
-                handle_results_message(client_sock, self._finished_agencies, total_agencies)
+                handle_results_message(client_sock, self._sorteo_event, self._bets_lock)
 
         except Exception as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
