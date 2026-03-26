@@ -1,8 +1,149 @@
 # TP0: Docker + Comunicaciones + Concurrencia
 
+Se espera que se redacte una sección del README en donde se indique cómo ejecutar cada ejercicio y se detallen los aspectos más importantes de la solución provista, como ser el protocolo de comunicación implementado (Parte 2) y los mecanismos de sincronización utilizados (Parte 3).
+
 En el presente repositorio se provee un esqueleto básico de cliente/servidor, en donde todas las dependencias del mismo se encuentran encapsuladas en containers. Los alumnos deberán resolver una guía de ejercicios incrementales, teniendo en cuenta las condiciones de entrega descritas al final de este enunciado.
 
  El cliente (Golang) y el servidor (Python) fueron desarrollados en diferentes lenguajes simplemente para mostrar cómo dos lenguajes de programación pueden convivir en el mismo proyecto con la ayuda de containers, en este caso utilizando [Docker Compose](https://docs.docker.com/compose/).
+ 
+## Resolución Parte 1: Introducción a Docker
+
+### Ejercicio 1:
+
+El archivo generar-compose.sh internamente invoca un subscript de python (generador-clientes.py)
+
+#### Ejecución:
+
+`./generar-compose.sh docker-compose-dev.yaml 5`
+
+### Ejercicio 2:
+
+Se actualizó `generar-compose.sh` para que, por medio de docker volumes, no sea necesario reconstruir las imágenes de docker para hacerlos efectivos.
+
+#### Ejecución:
+
+`./generar-compose.sh docker-compose-dev.yaml 5`
+`make docker-compose-up`
+`make docker-compose-logs`
+
+### Ejercicio 3
+
+`validar-echo-server` levanta un contenedor de docker en la misma red que el server para poder enviear el mensaje de prueba.
+
+#### Ejecución:
+
+`./validar-echo-server`
+
+### Ejercicio 4
+
+Se implementó el manejo de señales SIGTERM tanto en cliente como servidor, asegurando el cierre correcto de sockets y recursos.
+
+#### Ejecución:
+
+`./generar-compose.sh docker-compose-dev.yaml 5`
+`make docker-compose-up`
+`make docker-compose-logs`
+
+## Resolución Parte 2: Repaso de Comunicaciones
+
+### Ejercicio 5
+
+#### Protocolo de comunicación:
+
+Cuando un cliente quiere enviar una apuesta al servidor, lo hace con un mensaje con la siguientte estructura:
+
+`| AGENCY (uint32 = 4 Bytes) | NAME_LEN (uint32) | NAME (LEN Bytes) | SURNAME_LEN (uint32) | SURNAME (LEN Bytes) | DNI (uint64 = 8 Bytes) | BIRTHDATE (uint64) | NUMBER (uint32) |`
+
+Esto se hace utilizando **Big Endian** encoding con el fin de mantener consistencia entre cliente y servidor. El servidor por su parte en caso de recepción exitosa de la apuesta, envia un mensaje `"OK\n"` a modo de confirmación
+
+#### Ejecución:
+
+`./generar-compose.sh docker-compose-dev.yaml 5`
+`make docker-compose-up`
+`make docker-compose-logs`
+
+### Ejercicio 6
+
+#### Protocolo de comunicación:
+
+Para este ejercicio se modificó la estructura del mensaje agregando un header con la cantidad en apuestas que se estan enviando:
+
+`| BETS_AMOUNT (uint32 = 4 Bytes) | AGENCY (uint32) | NAME_LEN (uint32) | NAME (LEN Bytes) | SURNAME_LEN (uint32) | SURNAME (LEN Bytes) | DNI (uint64 = 8 Bytes) | BIRTHDATE (uint64) | NUMBER (uint32) |...`
+
+Al momento de armar el mensaje, como el largo de los mensajés es dinámico, para evitar superar los 8kb se leen apuestas hasta completarlo. En el caso de que ya se haya leido una apuesta que no entra en el mensaje, esta se guarda como pendiente y se enviara con el siguiente mensaje, evitando su pérdida. 
+
+Por otro lado el servidor, en caso de que una de las apuestas recibidas en un batch tenga un error, guarda todas las demas y notifica al cliente un mensaje `"400"`. Si no ocurren errores, la respuesta sera `"200"`
+
+#### Ejecución:
+
+`./generar-compose.sh docker-compose-dev.yaml 5`
+`make docker-compose-up`
+`make docker-compose-logs`
+
+### Ejercicio 7
+
+#### Protocolo de comunicación:
+
+Para este ejercicio se modificó la estructura del mensaje agregando un header con el tipo de mensaje enviado:
+
+`| TYPE (uint8 = 1 Byte) | BETS_AMOUNT (uint32 = 4 Bytes) | AGENCY (uint32) | NAME_LEN (uint32) | NAME (LEN Bytes) | SURNAME_LEN (uint32) | SURNAME (LEN Bytes) | DNI (uint64 = 8 Bytes) | BIRTHDATE (uint64) | NUMBER (uint32) |...`
+
+Siendo los posibles tipos de mensaje: 
+
+ - BETS (1): envia batch de apuestas
+ - FIN (2): notifica que la agencia terminó de enviar apuestas.
+ - RESULTS (3): consulta los ganadores al servidor.
+
+##### FIN:
+
+Este mensaje se envia con la siguiente estructura:
+
+`| TYPE (uint8 = 1 Byte) | AGENCY (uint32) |`
+
+Al momento de recibirlo, el servidor registra la finalización de esta agencia y responde con `"200"`. En el caso de qu esta agencia ya haya informado su finalizacion, responde con `"400"`
+
+##### RESULTS:
+
+Este mensaje se envia con la siguiente estructura:
+
+`| TYPE (uint8 = 1 Byte) | AGENCY (uint32) |`
+
+Al momento de rerecibirlo, antes que nada, el servidor verifica que todas las agencias hayan terminado. En caso de que así sea, responde con un mensaje con la siguiente estructura:
+
+`| STATUS (OK = 1) | WINNERS_AMOUNT (uint32 = 4 Bytes) | WINNER_DNI (uint64 = 8 Bytes) |...`
+
+En caso de no estar en condiciones de obtener los ganadores (no se realizó el sorteo), retorna:
+`| STATUS (ERROR = 2) |`
+
+Al suceder esto, el cliente cerrara la conexión y reintentara la consulta luego de un tiempo de espera `RetriesDelay`, teniendo un limite a la cantidad de reintentos realizables `RetriesMaxAmount` (ambos configurables en `config.yaml` ) 
+
+#### Ejecución:
+
+`./generar-compose.sh docker-compose-dev.yaml 5`
+`make docker-compose-up`
+`make docker-compose-logs`
+
+## Resolución Parte 3: Repaso de Concurrencia
+
+### Ejercicio 8
+
+El servidor fue modificado para manejar múltiples conexiones en paralelo mediante el uso de threads. Por cada nueva conexión aceptada, se crea un nuevo thread encargado de procesar el mensaje del cliente.
+
+Para evitar condiciones de carrera se implementaron mecanismos de sincronización:
+
+- **Lock de apuestas (`bets_lock`)**: protege el acceso concurrente al archivo de almacenamiento.
+- **Lock de finalización (`finished_lock`)**: asegura consistencia al registrar agencias finalizadas.
+- **Evento de sorteo (`sorteo_event`)**: permite coordinar el momento en que todas las agencias finalizaron, evitando polling activo.
+
+Se priorizó minimizar la sección crítica, reduciendo el tiempo de lock durante operaciones de I/O.
+
+Además, el servidor espera la finalización de todos los threads activos al momento de shutdown para garantizar un cierre graceful.
+
+#### Ejecución:
+
+`./generar-compose.sh docker-compose-dev.yaml 5`
+`make docker-compose-up`
+`make docker-compose-logs`
 
 ## Instrucciones de uso
 El repositorio cuenta con un **Makefile** que incluye distintos comandos en forma de targets. Los targets se ejecutan mediante la invocación de:  **make \<target\>**. Los target imprescindibles para iniciar y detener el sistema son **docker-compose-up** y **docker-compose-down**, siendo los restantes targets de utilidad para el proceso de depuración.
